@@ -45,6 +45,7 @@
 #define MRC     2
 #define CRS     3
 #define ERG2    4
+#define LEV     5
 
 class ErgFilePoint
 {

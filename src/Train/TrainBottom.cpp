@@ -30,6 +30,8 @@ TrainBottom::TrainBottom(TrainSidebar *trainSidebar, QWidget *parent) :
     QWidget(parent),
     m_trainSidebar(trainSidebar)
 {
+
+
     // Control buttons
     QHBoxLayout *toolbuttons = new QHBoxLayout;
     toolbuttons->setSpacing(0);

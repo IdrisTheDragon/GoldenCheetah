@@ -70,6 +70,7 @@ public:
     void setCadence(double aCadence);
     void setLoad(double load);
     void setSlope(double slope);
+    void setLevel(int level);
     void setMsecs(long);
     void setLapMsecs(long);
     void setLapMsecsRemaining(long);
@@ -126,6 +127,7 @@ public:
     double getCadence() const;
     double getLoad() const;
     double getSlope() const;
+    int getLevel() const;
     long getMsecs() const;
     long getLapMsecs() const;
     double getDistance() const;
@@ -149,11 +151,13 @@ public:
     void setTrainerCalibRequired(bool status);
     void setTrainerConfigRequired(bool status);
     void setTrainerBrakeFault(bool status);
+    void setTrainerPowerRange(int min, int max);
     bool getTrainerReady() const;
     bool getTrainerRunning() const;
     bool getTrainerCalibRequired() const;
     bool getTrainerConfigRequired() const;
     bool getTrainerBrakeFault() const;
+    void getTrainerPowerRange(int& min, int& max) const;
 
     uint8_t spinScan[24];
 
@@ -165,6 +169,7 @@ private:
     double cadence;      // in rpm
     double smo2, thb;
     double lte, rte, lps, rps; // torque efficiency and pedal smoothness
+    int level;
     double torque; // raw torque data for calibration display
     double latitude, longitude, altitude;
     double vo2, vco2, rf, rmv, tv, feo2;
@@ -189,6 +194,8 @@ private:
     bool trainerCalibRequired;
     bool trainerConfigRequired;
     bool trainerBrakeFault;
+    int trainerMinPower;
+    int trainerMaxPower;
 };
 
 #endif

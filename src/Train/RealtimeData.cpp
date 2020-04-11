@@ -37,6 +37,8 @@ RealtimeData::RealtimeData()
     trainerCalibRequired = false;
     trainerConfigRequired = false;
     trainerBrakeFault = false;
+    trainerMinPower = 0;
+    trainerMaxPower = 0;
     memset(spinScan, 0, 24);
 }
 
@@ -92,6 +94,10 @@ void RealtimeData::setSlope(double slope)
 void RealtimeData::setLoad(double load)
 {
     this->load = load;
+}
+void RealtimeData::setLevel(int level)
+{
+    this->level = level;
 }
 void RealtimeData::setMsecs(long x)
 {
@@ -202,6 +208,10 @@ double RealtimeData::getLoad() const
 {
     return load;
 }
+int RealtimeData::getLevel() const
+{
+    return level;
+}
 long RealtimeData::getMsecs() const
 {
     return msecs;
@@ -282,6 +292,12 @@ void RealtimeData::setTrainerBrakeFault(bool status)
     this->trainerBrakeFault = status;
 }
 
+void RealtimeData::setTrainerPowerRange(int min, int max)
+{
+    this->trainerMinPower = min;
+    this->trainerMaxPower = max;
+}
+
 bool RealtimeData::getTrainerReady() const
 {
     return trainerReady;
@@ -305,6 +321,12 @@ bool RealtimeData::getTrainerConfigRequired() const
 bool RealtimeData::getTrainerBrakeFault() const
 {
     return trainerBrakeFault;
+}
+
+void RealtimeData::getTrainerPowerRange(int &min, int &max) const
+{
+    min = trainerMinPower;
+    max = trainerMaxPower;
 }
 
 double RealtimeData::value(DataSeries series) const

@@ -353,7 +353,7 @@ TrainSidebar::TrainSidebar(Context *context) : GcWindow(context), context(contex
     wbalr = wbal = 0;
     load_msecs = total_msecs = lap_msecs = 0;
     displayWorkoutDistance = displayDistance = displayPower = displayHeartRate =
-    displaySpeed = displayCadence = slope = load = 0;
+    displaySpeed = displayCadence = slope = load = level = 0;
     displaySMO2 = displayTHB = displayO2HB = displayHHB = 0;
     displayLRBalance = displayLTE = displayRTE = displayLPS = displayRPS = 0;
     displayLatitude = displayLongitude = displayAltitude = 0.0;
@@ -783,6 +783,14 @@ TrainSidebar::workoutTreeWidgetSelectionChanged()
         setLabels();
         clearStatusFlags(RT_WORKOUT);
         //ergPlot->setVisible(false);
+    } else if (index == 2) {
+        // level mode
+        context->notifyErgFileSelected(NULL);
+        ergFile=NULL;
+        mode = LEV;
+        setLabels();
+        clearStatusFlags(RT_WORKOUT);
+        //ergPlot->setVisible(false);
     } else {
         // workout mode
         ergFile = new ErgFile(filename, mode, context);
@@ -812,19 +820,25 @@ TrainSidebar::workoutTreeWidgetSelectionChanged()
     }
 
     // set the device to the right mode
+    clearStatusFlags(RT_MODE_SPIN|RT_MODE_LEVEL|RT_MODE_ERGO);
     if (mode == ERG || mode == MRC) {
         setStatusFlags(RT_MODE_ERGO);
-        clearStatusFlags(RT_MODE_SPIN);
 
         // update every active device
         foreach(int dev, activeDevices) Devices[dev].controller->setMode(RT_MODE_ERGO);
 
-    } else { // SLOPE MODE
-        setStatusFlags(RT_MODE_SPIN);
-        clearStatusFlags(RT_MODE_ERGO);
+    } else if (mode == CRS) { // SLOPE MODE
+        setStatusFlags(RT_MODE_SLOPE);
 
         // update every active device
-        foreach(int dev, activeDevices) Devices[dev].controller->setMode(RT_MODE_SPIN);
+        foreach(int dev, activeDevices) Devices[dev].controller->setMode(RT_MODE_SLOPE);
+
+    } else if (mode == LEV ) {
+        setStatusFlags(RT_MODE_LEVEL);
+
+        // update every active device
+        foreach(int dev, activeDevices) Devices[dev].controller->setMode(RT_MODE_LEVEL);
+
     }
 
     updateMetricLapDistanceRemaining();
@@ -1199,17 +1213,16 @@ void TrainSidebar::Start()       // when start button is pressed
         load = 100;
         slope = 0.0;
 
-        // Reset Speed Simulation
-        bicycle.clear();
-
         if (mode == ERG || mode == MRC) {
             setStatusFlags(RT_MODE_ERGO);
-            clearStatusFlags(RT_MODE_SPIN);
             foreach(int dev, activeDevices) Devices[dev].controller->setMode(RT_MODE_ERGO);
-        } else { // SLOPE MODE
-            setStatusFlags(RT_MODE_SPIN);
-            clearStatusFlags(RT_MODE_ERGO);
-            foreach(int dev, activeDevices) Devices[dev].controller->setMode(RT_MODE_SPIN);
+        } else if (mode == CRS) { // SLOPE MODE
+            setStatusFlags(RT_MODE_SLOPE);
+            foreach(int dev, activeDevices) Devices[dev].controller->setMode(RT_MODE_SLOPE);
+        }
+        else if (mode == LEV) { //LEVEL MODE
+            setStatusFlags(RT_MODE_LEVEL);
+            foreach(int dev, activeDevices) Devices[dev].controller->setMode(RT_MODE_LEVEL);
         }
 
         // tell the world
@@ -1631,7 +1644,6 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
         } else {
             rtData.setLoad(load); // always set load..
             rtData.setSlope(slope); // always set load..
-            rtData.setAltitude(displayAltitude); // always set display altitude
 
             double distanceTick = 0;
             bool fReceivedKphTelemetry = false;
@@ -1658,15 +1670,6 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
 
                 if (Devices[dev].type == DEV_ANTLOCAL || Devices[dev].type == DEV_NULL) {
                     rtData.setHb(local.getSmO2(), local.gettHb()); //only moxy data from ant and robot devices right now
-                }
-
-                if (Devices[dev].type == DEV_NULL || Devices[dev].type == DEV_BT40) {
-                    // Only robot and BT40 devices provides VO2 metrics
-                    rtData.setRf(local.getRf());
-                    rtData.setRMV(local.getRMV());
-                    rtData.setVO2_VCO2(local.getVO2(), local.getVCO2());
-                    rtData.setTv(local.getTv());
-                    rtData.setFeO2(local.getFeO2());
                 }
 
                 // what are we getting from this one?
@@ -2120,7 +2123,7 @@ void TrainSidebar::toggleCalibration()
                     Devices[dev].controller->setLoad(load);
                 }
             }
-        } else {
+        } else if (status&RT_MODE_SLOPE) {
 
             foreach(int dev, activeDevices) {
                 if (calibrationDeviceIndex == dev) {
@@ -2128,6 +2131,13 @@ void TrainSidebar::toggleCalibration()
                     Devices[dev].controller->setMode(RT_MODE_SPIN);
                     Devices[dev].controller->setGradient(slope);
                 }
+                Devices[dev].controller->setMode(RT_MODE_SLOPE);
+                Devices[dev].controller->setGradient(slope);
+            }
+        } else if (status&RT_MODE_LEVEL) {
+            foreach(int dev, activeDevices) {
+                Devices[dev].controller->setMode(RT_MODE_LEVEL);
+                Devices[dev].controller->setLevel(level);
             }
         }
 
@@ -2445,15 +2455,18 @@ void TrainSidebar::Higher()
 
     } else {
         if (status&RT_MODE_ERGO) load += 5;
-        else slope += 0.1;
+        else if (status&RT_MODE_SLOPE) slope += 0.1;
+        else if (status&RT_MODE_LEVEL) level += 1;
 
         if (load >1500) load = 1500;
-        if (slope >40) slope = 40;
+        if (slope >15) slope = 15;
 
         if (status&RT_MODE_ERGO)
             foreach(int dev, activeDevices) Devices[dev].controller->setLoad(load);
-        else
+        else if (status&RT_MODE_SLOPE)
             foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope);
+        else if (status&RT_MODE_LEVEL)
+            foreach(int dev, activeDevices) Devices[dev].controller->setLevel(level);
     }
 
     emit setNotification(tr("Increasing intensity.."), 2);
@@ -2471,15 +2484,18 @@ void TrainSidebar::Lower()
     } else {
 
         if (status&RT_MODE_ERGO) load -= 5;
-        else slope -= 0.1;
+        else if (status&RT_MODE_SLOPE) slope -= 0.1;
+        else if (status&RT_MODE_LEVEL) level -= 1;
 
         if (load <0) load = 0;
-        if (slope <-40) slope = -40;
+        if (slope <-10) slope = -10;
 
         if (status&RT_MODE_ERGO)
             foreach(int dev, activeDevices) Devices[dev].controller->setLoad(load);
-        else
+        else if (status&RT_MODE_SLOPE)
             foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope);
+        else if (status&RT_MODE_LEVEL)
+            foreach(int dev, activeDevices) Devices[dev].controller->setLevel(level);
     }
 
     emit setNotification(tr("Decreasing intensity.."), 2);

@@ -65,6 +65,7 @@ public:
     void setLoad(double);
     void setGradient(double);
     void setMode(int);
+    void setLevel(int);
 
     // passing calibration state between trainer and TrainSidebar
     uint8_t  getCalibrationType();
